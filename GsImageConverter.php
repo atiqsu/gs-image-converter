@@ -22,13 +22,16 @@ class GsImageConverter
      * Facade to user. Handle different input formats.
      *
      * @param string $imageSourcePath
-     * @param string $target One of two formats. FORMAT 1: gif FORMAT 2: /var/tmp/mynewfile.gif
-     * @param array $backgroundColor Default: array(255,255,255) Array of RGB representing background color to use for transparency
+     * @param string $target          One of two formats. FORMAT 1: gif FORMAT 2: /var/tmp/mynewfile.gif
+     * @param array  $backgroundColor Default: array(255,255,255) Array of RGB representing background color to use for transparency
      */
     public static function convert($imageSourcePath, $target, $backgroundColor = array(255, 255, 255))
     {
         self::validateImage($imageSourcePath);
         list($imageDestinationPath, $imageDestinationType) = self::parseInputFormat($imageSourcePath, $target);
+        self::differentImageExtension($imageSourcePath, $imageDestinationPath) or self::throwE(
+          "You're trying to convert to the same extension"
+        );
 
         // get original image as resource
         $imageResourceSource = self::getImageAsResource($imageSourcePath);
@@ -38,8 +41,18 @@ class GsImageConverter
         or self::throwE("Could not create true color image resource");
 
         // destination image - set background backcolor
-        $colorIdentifier = call_user_func_array('imagecolorallocate', array_merge(array($imageResourceDestination), $backgroundColor));
-        imagefilledrectangle($imageResourceDestination, 0, 0, imagesx($imageResourceSource), imagesy($imageResourceSource), $colorIdentifier);
+        $colorIdentifier = call_user_func_array(
+          'imagecolorallocate',
+          array_merge(array($imageResourceDestination), $backgroundColor)
+        );
+        imagefilledrectangle(
+          $imageResourceDestination,
+          0,
+          0,
+          imagesx($imageResourceSource),
+          imagesy($imageResourceSource),
+          $colorIdentifier
+        );
 
         // destination image - copy source image resource to destination resource
         imagecopyresampled(
@@ -182,6 +195,18 @@ class GsImageConverter
         $spec['height'] = $spec[1];
         $spec['type'] = $spec[2];
         return !is_null($key) && isset($spec[$key]) ? $spec[$key] : $spec;
+    }
+
+    /**
+     * Checks two image paths extensions if they are the same
+     *
+     * @param string $imagePathOne
+     * @param string $imagePathTwo
+     * @return boolean
+     */
+    private static function differentImageExtension($imagePathOne, $imagePathTwo)
+    {
+        return self::getImagePathInfo($imagePathOne, 'extension') != self::getImagePathInfo($imagePathTwo, 'extension');
     }
 
     /**
