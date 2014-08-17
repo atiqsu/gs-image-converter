@@ -5,14 +5,15 @@
  *
  * Utility class to convert one image file type to another. Supported formats: JPEG, GIF, PNG
  *
- * FORMAT 1: Specify source image and extension to convert to.
- * GsImageConverter::convert('/home/gs/my_png.png', 'jpeg');
+ * FORMAT 1: Specify source image and extension to convert to. An optional third parameter representing
+ * RGB background color can be spcecified.
+ * GsImageConverter::convert('/home/gs/my_img.png', 'jpeg');
+ * GsImageConverter::convert('/home/gs/my_img.png', 'jpeg', array(0, 0, 0));
  *
  * FORMAT 2: Specify source image and destination path for new image with new extension.
- * GsImageConverter::convert('/home/gs/my_png.png', '/home/gs/new/my_new_file.jpeg);
+ * GsImageConverter::convert('/home/gs/my_img.png', '/home/gs/new/my_img.jpeg');
  *
- * NO GUARANTEES. PLEASE TEST AND USE AT YOUR OWN RISK
- * Garagesocial, Inc. - www.garagesocial.com
+ * https://github.com/garagesocial/gs-image-converter
  */
 class GsImageConverter
 {
@@ -22,14 +23,39 @@ class GsImageConverter
      *
      * @param string $imageSourcePath
      * @param string $target One of two formats. FORMAT 1: gif FORMAT 2: /var/tmp/mynewfile.gif
+     * @param array $backgroundColor Default: array(255,255,255) Array of RGB representing background color to use for transparency
      */
-    public static function convert($imageSourcePath, $target)
+    public static function convert($imageSourcePath, $target, $backgroundColor = array(255, 255, 255))
     {
         self::validateImage($imageSourcePath);
         list($imageDestinationPath, $imageDestinationType) = self::parseInputFormat($imageSourcePath, $target);
+
+        // get original image as resource
         $imageResourceSource = self::getImageAsResource($imageSourcePath);
-        $imageResourceDestination = self::getImageTrueColorEquivalent($imageResourceSource);
-        self::imageResampleFromReference($imageResourceDestination, $imageResourceSource);
+
+        // destination image - create new image resource of same dimensions
+        $imageResourceDestination = imagecreatetruecolor(imagesx($imageResourceSource), imagesy($imageResourceSource))
+        or self::throwE("Could not create true color image resource");
+
+        // destination image - set background backcolor
+        $colorIdentifier = imagecolorallocate($imageResourceDestination,  255, 255, 255);
+        imagefilledrectangle($imageResourceDestination, 0, 0, imagesx($imageResourceSource), imagesy($imageResourceSource), $colorIdentifier);
+
+        // destination image - copy source image resource to destination resource
+        imagecopyresampled(
+          $imageResourceDestination,
+          $imageResourceSource,
+          0,
+          0,
+          0,
+          0,
+          imagesx($imageResourceSource),
+          imagesy($imageResourceSource),
+          imagesx($imageResourceSource),
+          imagesy($imageResourceSource)
+        ) or self::throwE("Could not resample image");
+
+        // destination image - save to disk
         self::saveFileToDisk($imageDestinationType, $imageResourceDestination, $imageDestinationPath);
     }
 
@@ -90,48 +116,6 @@ class GsImageConverter
             default :
                 self::throwE("Unknown file type detected: $imagePath");
         }
-    }
-
-    /**
-     * Returns a true color image using source as reference
-     *
-     * @param resource $imageSourceResource
-     * @throw Exception When resource cannot be created
-     * @return resource
-     */
-    private static function getImageTrueColorEquivalent($imageSourceResource)
-    {
-        $imageTrueColor = imagecreatetruecolor(
-          imagesx($imageSourceResource),
-          imagesy($imageSourceResource)
-        ) or self::throwE(
-          "Could not create true color image resource"
-        );
-        return $imageTrueColor;
-    }
-
-    /**
-     * Get resampled image
-     *
-     * @param resource $imageDestinationResource
-     * @param resource $imageSourceResource
-     * @throw Exception When operation fails
-     * @return resource
-     */
-    private static function imageResampleFromReference($imageDestinationResource, $imageSourceResource)
-    {
-        imagecopyresampled(
-          $imageDestinationResource,
-          $imageSourceResource,
-          0,
-          0,
-          0,
-          0,
-          imagesx($imageSourceResource),
-          imagesy($imageSourceResource),
-          imagesx($imageSourceResource),
-          imagesy($imageSourceResource)
-        ) or self::throwE("Could not resample image");
     }
 
     /**
