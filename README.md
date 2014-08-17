@@ -19,6 +19,13 @@ Specify source image and destination path for new image with new extension. In t
 GsImageConverter::convert('/home/gs/my_img.png', '/home/gs/new/my_new_file.jpeg');
 ```
 
+### Background Color when converting to JPEG
+When converting an image from a type that supports transparency to one
+that does not ex: png --> jpeg, a color needs to fill the space. It can be specified in the third parameter in an array of RGB.
+```
+GsImageConverter::convert('/home/gs/my_img.png', '/home/gs/new/my_new_file.jpeg', array(0, 0, 0));
+```
+
 ### License
 The MIT License
 
