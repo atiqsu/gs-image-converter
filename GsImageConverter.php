@@ -38,7 +38,7 @@ class GsImageConverter
         or self::throwE("Could not create true color image resource");
 
         // destination image - set background backcolor
-        $colorIdentifier = imagecolorallocate($imageResourceDestination,  255, 255, 255);
+        $colorIdentifier = call_user_func_array('imagecolorallocate', array_merge(array($imageResourceDestination), $backgroundColor));
         imagefilledrectangle($imageResourceDestination, 0, 0, imagesx($imageResourceSource), imagesy($imageResourceSource), $colorIdentifier);
 
         // destination image - copy source image resource to destination resource
